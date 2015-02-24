@@ -103,6 +103,11 @@ class PlasmidView(DNApyBaseDrawingClass):
 		self.Bind(wx.EVT_MOTION, self.OnMotion)
 		#self.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDouble)
 		
+		# zooming of the canvas  TODO
+		self.Bind(wx.EVT_MOUSEWHEEL, self.OnScroll) # for zooming
+		self.zoom = [0,0,1.0] # hold the zoom infos [dX,dY, zoom]
+		
+		
 
 
 
@@ -236,8 +241,19 @@ class PlasmidView(DNApyBaseDrawingClass):
 			self.ctx.scale(canvasWidth*ratio, canvasHeight) # Normalizing the canvas
 			self.ctx.scale(0.01, 0.01) 			# make it 100*ratiox100
 			self.ctx.translate (50/ratio,50) 		# set center to 0,0		
-		
-		
+			
+			# here we zoom if we want to:
+			if exportSize == False: # only zoom for wx.dc and not for svg
+				w, h = self.ctx.device_to_user(self.size[0],self.size[1])
+				nw = w * self.zoom[2] # new width
+				tx = (nw-w) * self.zoom[0]/w
+				ty = (nw-w) * self.zoom[1]/w
+			
+				if self.zoom[2] > 1:
+					self.ctx.translate(-tx, -ty)
+				self.ctx.scale(self.zoom[2], self.zoom[2])
+			
+			
 		# get radius rom options:
 		radius 		= self.opt.pRadius
 		self.radius 	= radius
@@ -1205,6 +1221,21 @@ class PlasmidView(DNApyBaseDrawingClass):
 	def OnRightUp(self, event):
 		print('plasmid right')
 
+	def OnScroll(self, event):
+		if event.GetWheelRotation() > 0:
+			self.zoom[2]  = self.zoom[2] + 0.1
+		elif event.GetWheelRotation() < 0 and self.zoom[2] > 1:
+			self.zoom[2]  = self.zoom[2]  - 0.1
+		
+		# get mouse position and use that 
+		x, y = self.ScreenToClient(wx.GetMousePosition())	
+		x2, y2 = self.ctx.device_to_user(x,y)
+
+		self.zoom[0] = x2
+		self.zoom[1] = y2
+		
+		self.update_ownUI()
+		return True
 
 ############ Done with mouse methods ####################
 
